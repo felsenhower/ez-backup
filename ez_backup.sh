@@ -91,5 +91,5 @@ for backup_key in "${backup_keys[@]}" ; do
     fi    
     target_directory="$target_mount_dir"/"$target_subdir"
     mkdir -p "$target_directory"
-    rsync -avu "$source_mount_dir"/ "$target_directory"/
+    rsync -avu --delete "$source_mount_dir"/ "$target_directory"/
 done
