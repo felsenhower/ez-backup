@@ -46,7 +46,7 @@ function cleanup() {
     sleep 1
     sync
     sleep 1
-    for mountpoint in "$mount_dir"/* ; do
+    find /mnt/ez_backup -mindepth 1 -maxdepth 1 -type d | while read -r mountpoint ; do
         printf 'Unmount "%s"\n' "$mountpoint"
         umount "$mountpoint"
         rmdir "$mountpoint"
@@ -56,7 +56,19 @@ function cleanup() {
 
 trap cleanup EXIT
 
-readarray -t backup_keys < <(echo "$config" | jq -r '.backups | keys | .[]')
+readarray -t backup_keys_from_config < <(echo "$config" | jq -r '.backups | keys | .[]')
+
+if (( "$#" == 0 )) ; then
+    backup_keys=( "${backup_keys_from_config[@]}" )
+else
+    backup_keys_from_args=( "$@" )
+    for key in "${backup_keys_from_args[@]}" ; do
+        if [[ ! " ${backup_keys_from_config[*]} " =~ [[:space:]]${key}[[:space:]] ]]; then
+            fail "$(printf 'Unknown backup name "%s"' "$key")"
+        fi
+    done
+    backup_keys=( "${backup_keys_from_args[@]}" )
+fi
 
 for backup_key in "${backup_keys[@]}" ; do
     printf 'Backing up "%s":\n' "$backup_key"
