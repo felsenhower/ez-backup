@@ -14,18 +14,24 @@ You may lose your data! Use at your own risk!
 
 ## Usage
 
+First, find the UUIDs of the device(s) you want to back up and of the device(s) that you want to write the backup to:
+
+```
+$ sudo lsblk --paths --output=NAME,FSTYPE,LABEL,UUID,MOUNTPOINTS --exclude=7
+NAME                                                      FSTYPE      LABEL    UUID                                 MOUNTPOINTS
+/dev/sda1                                                                                                            
+├─/dev/sda1                                               vfat                 90D5-9933                            /boot/efi
+└─/dev/sda2                                               ext4        root     5b7e9c56-b11f-4403-bdf5-1053f42e6337 /
+/dev/sdb                                                                                                            
+└─/dev/sdb1                                               crypto_LUKS bob      6eb75e49-fa9e-4ef2-a75e-78dbe96ed9c4 
+  └─/dev/mapper/home-bob                                  ext4        bob      f99416c8-e250-43ad-aeab-3bc76eab5ec9 /home/bob
+/dev/sdc                                                                                                            
+└─/dev/sdc1                                               ext4        Backups  66445309-f07d-4230-9674-2d6e78876f9f /run/media/bob/Backups
+```
+
 ```bash
 $ git clone git@github.com:felsenhower/ez-backup.git
 $ cd ez-backup
-$ ./list_disks.sh
-9353affd-1472-4cdd-9800-3ed7e1b0d80d -> /dev/sda1
- - /boot/efi
-863c3d5b-3e22-4158-b147-2ae5c0ffdc60 -> /dev/sda2
- - /
-eeb78f9e-d873-49b3-ac24-6bc03e0cc0a5 -> /dev/sdb1
- - /home
-65cb6471-7dad-4bb3-9e4b-415a0615ac86 -> /dev/sdc1
- - /run/media/ruben/Backups
 ```
 
 Create config like so:
@@ -35,22 +41,24 @@ Create config like so:
     "mount_dir": "/mnt/ez_backup",
     "backups": {
         "boot": {
-            "source_device": "9353affd-1472-4cdd-9800-3ed7e1b0d80d",
-            "target_device": "65cb6471-7dad-4bb3-9e4b-415a0615ac86",
+            "source_device": "90D5-9933",
+            "target_device": "66445309-f07d-4230-9674-2d6e78876f9f",
             "target_subdir": "backup_boot"
         },
         "root": {
-            "source_device": "863c3d5b-3e22-4158-b147-2ae5c0ffdc60",
-            "target_device": "65cb6471-7dad-4bb3-9e4b-415a0615ac86",
+            "source_device": "5b7e9c56-b11f-4403-bdf5-1053f42e6337",
+            "target_device": "66445309-f07d-4230-9674-2d6e78876f9f",
             "target_subdir": "backup_root"
         },
         "home": {
-            "source_device": "eeb78f9e-d873-49b3-ac24-6bc03e0cc0a5",
-            "target_device": "65cb6471-7dad-4bb3-9e4b-415a0615ac86",
+            "source_device": "f99416c8-e250-43ad-aeab-3bc76eab5ec9",
+            "target_device": "66445309-f07d-4230-9674-2d6e78876f9f",
             "target_subdir": "backup_home"
         }
     }
 }
 ```
+
+Note that for bob's encrypted home directory, the UUID of the ext4 device is used, not the LUKS device.
 
 Now you can simply run `sudo ./ez_backup.sh`.
