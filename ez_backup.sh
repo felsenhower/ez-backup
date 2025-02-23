@@ -42,16 +42,37 @@ fi
 
 mkdir -p "$mount_dir"
 
-function cleanup() {
-    sleep 1
-    sync
-    sleep 1
-    find /mnt/ez_backup -mindepth 1 -maxdepth 1 -type d | while read -r mountpoint ; do
-        printf 'Unmount "%s"\n' "$mountpoint"
-        umount "$mountpoint"
-        rmdir "$mountpoint"
+function countdown() {
+    local value="$1"
+    local value_len
+    value_len="$(echo -n "$value" | wc -c)"
+    for i in $(seq "$value" -1 1) ; do
+        printf '\r [%*s] ' "$value_len" "$i"
+        sleep 1
     done
-    rmdir "$mount_dir"
+    printf '\r [%*s] \n' "$value_len" 0
+}
+
+function cleanup() {
+    local max_retries=9
+    for i in $(seq 1 "$max_retries") ; do
+        readarray -t mounts < <(find "$mount_dir" -mindepth 1 -maxdepth 1 -type d)
+        if (( "${#mounts[@]}" == 0 )) ; then
+            break
+        fi
+        wait_duration="$(( 2**(i-1) ))"
+        printf 'Unmount attempt %s / %s. Wait for %s s...\n' "$i" "$max_retries" "$wait_duration"
+        countdown "$wait_duration"
+        sync
+        for mountpoint in "${mounts[@]}" ; do
+            printf 'Unmount %s...\n' "$mountpoint"
+            umount "$mountpoint" || true
+            if ! mountpoint -q "$mountpoint" ; then
+                rmdir "$mountpoint"
+            fi
+        done
+    done
+    echo 'All mounts unmounted successfully.'
 }
 
 trap cleanup EXIT
@@ -103,5 +124,5 @@ for backup_key in "${backup_keys[@]}" ; do
     fi    
     target_directory="$target_mount_dir"/"$target_subdir"
     mkdir -p "$target_directory"
-    rsync -avu --delete "$source_mount_dir"/ "$target_directory"/
+    rsync -avu --delete --exclude "$mount_dir" "$source_mount_dir"/ "$target_directory"/
 done
