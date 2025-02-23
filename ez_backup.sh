@@ -42,17 +42,6 @@ fi
 
 mkdir -p "$mount_dir"
 
-function countdown() {
-    local value="$1"
-    local value_len
-    value_len="$(echo -n "$value" | wc -c)"
-    for i in $(seq "$value" -1 1) ; do
-        printf '\r [%*s] ' "$value_len" "$i"
-        sleep 1
-    done
-    printf '\r [%*s] \n' "$value_len" 0
-}
-
 function cleanup() {
     local max_retries=9
     for i in $(seq 1 "$max_retries") ; do
@@ -61,8 +50,12 @@ function cleanup() {
             break
         fi
         wait_duration="$(( 2**(i-1) ))"
-        printf 'Unmount attempt %s / %s. Wait for %s s...\n' "$i" "$max_retries" "$wait_duration"
-        countdown "$wait_duration"
+        wait_duration_length="$(echo -n "$wait_duration" | wc -c)"
+        for j in $(seq "$wait_duration" -1 1) ; do
+            printf '\rUnmount attempt %s / %s. Wait for %s s... [%*s] ' "$i" "$max_retries" "$wait_duration" "$wait_duration_length" "$j"
+            sleep 1
+        done
+        printf '\rUnmount attempt %s / %s. Wait for %s s... [%*s] \n' "$i" "$max_retries" "$wait_duration" "$wait_duration_length" 0
         sync
         for mountpoint in "${mounts[@]}" ; do
             printf 'Unmount %s...\n' "$mountpoint"
